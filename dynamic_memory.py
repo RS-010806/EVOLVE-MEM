@@ -44,7 +44,19 @@ class DynamicMemoryNetwork:
     def add_note(self, text: str, metadata: Optional[Dict] = None) -> Dict:
         """Add a new experience as a memory note."""
         if not text or not text.strip():
-            raise ValueError("Text cannot be empty")
+            logging.warning("Attempted to add empty text, skipping")
+            # Return a minimal note to prevent pipeline failure
+            return {
+                'id': f"empty_{int(datetime.now().timestamp())}",
+                'content': '',
+                'timestamp': datetime.now().isoformat(),
+                'embedding': None,
+                'tags': [],
+                'context': '',
+                'keywords': [],
+                'links': [],
+                'metadata': {'error': 'Empty text provided'}
+            }
         
         try:
             # Generate embedding
@@ -79,12 +91,16 @@ class DynamicMemoryNetwork:
             self.notes[note_id] = note
             
             # Store in ChromaDB
-            self.collection.add(
-                documents=[text],
-                embeddings=[embedding],
-                ids=[note_id],
-                metadatas=[note_metadata]
-            )
+            try:
+                self.collection.add(
+                    documents=[text],
+                    embeddings=[embedding],
+                    ids=[note_id],
+                    metadatas=[note_metadata]
+                )
+            except Exception as e:
+                logging.error(f"Failed to add note to ChromaDB: {e}")
+                # Note is still stored in memory as fallback
             
             self.note_count += 1
             logging.info(f"Added note {note_id} (total: {self.note_count})")
@@ -93,7 +109,18 @@ class DynamicMemoryNetwork:
             
         except Exception as e:
             logging.error(f"Failed to add note: {e}")
-            raise
+            # Return a fallback note to prevent pipeline failure
+            return {
+                'id': f"fallback_{int(datetime.now().timestamp())}",
+                'content': text[:100] + "..." if len(text) > 100 else text,
+                'timestamp': datetime.now().isoformat(),
+                'embedding': None,
+                'tags': [],
+                'context': '',
+                'keywords': [],
+                'links': [],
+                'metadata': {'error': str(e)}
+            }
 
     def get_note(self, note_id: str) -> Optional[Dict]:
         """Retrieve a note by ID."""
@@ -102,6 +129,7 @@ class DynamicMemoryNetwork:
     def search(self, query: str, top_k: int = 5) -> Dict:
         """Search for similar notes using embeddings."""
         if not query or not query.strip():
+            logging.warning("Empty query provided for search")
             return {'ids': [], 'documents': [], 'metadatas': [], 'distances': []}
         
         try:
@@ -109,15 +137,49 @@ class DynamicMemoryNetwork:
             query_embedding = self.model.encode(query).tolist()
             
             # Search in ChromaDB
-            results = self.collection.query(
-                query_embeddings=[query_embedding], 
-                n_results=top_k
-            )
-            
-            return results
+            try:
+                results = self.collection.query(
+                    query_embeddings=[query_embedding], 
+                    n_results=top_k
+                )
+                return results
+            except Exception as e:
+                logging.error(f"ChromaDB search failed: {e}")
+                # Fallback to memory search
+                return self._fallback_search(query, top_k)
             
         except Exception as e:
             logging.error(f"Search failed: {e}")
+            return {'ids': [], 'documents': [], 'metadatas': [], 'distances': []}
+    
+    def _fallback_search(self, query: str, top_k: int) -> Dict:
+        """Fallback search using memory dict when ChromaDB fails."""
+        try:
+            # Simple text-based search as fallback
+            query_lower = query.lower()
+            matches = []
+            
+            for note_id, note in self.notes.items():
+                if query_lower in note['content'].lower():
+                    matches.append({
+                        'id': note_id,
+                        'content': note['content'],
+                        'metadata': note.get('metadata', {}),
+                        'score': 1.0  # Simple binary match
+                    })
+            
+            # Sort by score and take top_k
+            matches.sort(key=lambda x: x['score'], reverse=True)
+            matches = matches[:top_k]
+            
+            return {
+                'ids': [[m['id'] for m in matches]],
+                'documents': [[m['content'] for m in matches]],
+                'metadatas': [[m['metadata'] for m in matches]],
+                'distances': [[1.0 - m['score'] for m in matches]]
+            }
+        except Exception as e:
+            logging.error(f"Fallback search failed: {e}")
             return {'ids': [], 'documents': [], 'metadatas': [], 'distances': []}
 
     def get_stats(self) -> Dict:

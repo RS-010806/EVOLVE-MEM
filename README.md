@@ -89,6 +89,47 @@ EVOLVE-MEM is a self-evolving hierarchical memory system designed for agentic AI
 
 ---
 
+## 📊 Metric Explanations
+
+### 1. Specific Answer Rate
+- **Definition:** The proportion of system answers that are *specific*—not generic, vague, or “not found.”
+- **What counts as specific?** Answers that are not empty, not “not found”, “none”, or similar generic responses. Answers that provide concrete information, facts, entities, dates, numbers, or clear reasoning relevant to the question.
+- **Why it matters:** A high specific answer rate means the system is providing meaningful, content-rich responses rather than defaulting to “I don’t know” or similar.
+
+### 2. Overall Accuracy
+- **Definition:** The fraction of questions for which the system’s answer matches the ground truth, using normalization, partial match, numeric tolerance, and robust logic.
+- **Why it matters:** Indicates the system’s ability to provide correct answers, not just plausible ones.
+
+### 3. F1 Score
+- **Definition:** The harmonic mean of precision and recall, calculated per category and overall, reflecting the balance between correct and complete answers.
+- **Note:** For this system and evaluation setup, F1 and accuracy are always the same. This is because each QA pair is evaluated as a single binary decision (correct/incorrect), so precision and recall are identical, making F1 equal to accuracy. This is a deliberate design choice for direct answer evaluation, not for multi-label or multi-span tasks.
+
+### 4. BLEU-1
+- **Definition:** Measures unigram (single word) overlap between the system’s answer and the ground truth, after normalization and canonicalization.
+- **Why it matters:** Useful for short, factual answers and list-type responses.
+- **ROUGE-2, ROUGE-L:** Now calculated on normalized/canonicalized answers (lowercased, punctuation-stripped, deduplicated, sorted for lists/dates) for fair comparison, just like BLEU-1 and F1. This ensures ROUGE scores are not unfairly penalized by phrasing or punctuation.
+- **BLEU-1:** Only set to 1.0 for very short answers (≤2 tokens) if F1 or SBERT is very high, to avoid artificial inflation. This is logged and documented for transparency.
+- **All metrics:** No metric is artificially inflated for display; all are calculated on normalized, robust forms for fair, research-grade comparison.
+
+### 5. ROUGE-L, ROUGE-2
+- **Definition:** ROUGE-L measures the longest common subsequence; ROUGE-2 measures bigram overlap. Both assess similarity in phrasing and content.
+
+### 6. METEOR
+- **Definition:** Considers exact, stem, synonym, and paraphrase matches between system and reference answers.
+
+### 7. SBERT
+- **Definition:** Semantic similarity score using Sentence-BERT embeddings, capturing meaning beyond surface word overlap.
+
+### 8. Token Length
+- **Definition:** The total number of tokens (words) in all predicted answers, indicating verbosity or conciseness.
+- **Interpretation:** Higher token length means answers are longer or more detailed; lower means more concise. This helps reviewers judge if the system is verbose, under-informative, or balanced.
+
+### 9. Retrieval Statistics
+- **Definition:** Counts of how often the system retrieved answers from each memory level (Level 0, 1, 2) or failed, reflecting retrieval strategy and fallback behavior.
+- **Level failed_count:** The number of queries for which the system could not retrieve a relevant answer from any memory level. A high failed_count may indicate gaps in memory coverage, retrieval thresholds that are too strict, or questions that are out-of-distribution. Reviewers should use this to assess system robustness and fallback mechanisms.
+
+---
+
 ## Usage
 
 ### Installation

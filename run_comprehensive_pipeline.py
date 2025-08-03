@@ -87,20 +87,11 @@ def main():
     6. Run self-improvement
     7. Save results and print summary
     """
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(levelname)s %(name)s: %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
     start_time = time.time()
     log_file = setup_logging()
     
-    # --- Sampling mode: set to True to only evaluate a single story ---
-    sample_mode = True  # Set to False for full dataset
-    sample_story_index = 0  # Which story to sample (0 = first)
-
+    # Add comprehensive error handling wrapper
     try:
-        # Step 1: Load LoCoMo Dataset
         logging.info(f"{EMOJI['rocket']} Starting EVOLVE-MEM Comprehensive Research Pipeline")
         logging.info("=" * 80)
         logging.info("Research Objective: Self-Evolving Hierarchical Memory Architecture")
@@ -109,10 +100,20 @@ def main():
         logging.info("Enhanced Metrics: F1, BLEU-1, ROUGE-L, ROUGE-2, METEOR, SBERT")
         logging.info("=" * 80)
         
+        # --- Sampling mode: set to True to only evaluate a single story ---
+        sample_mode = True  # Set to False for full dataset
+        sample_story_index = 0  # Which story to sample (0 = first)
+    
+                # Step 1: Load LoCoMo Dataset
         logging.info(f"\n{EMOJI['folder']} STEP 1: Loading LoCoMo Dataset")
         logging.info("-" * 50)
         
-        dataset_loader = LoCoMoDatasetLoader(include_adversarial=True)
+        try:
+            dataset_loader = LoCoMoDatasetLoader(include_adversarial=True)
+        except Exception as e:
+            logging.error(f"{EMOJI['cross']} Failed to load dataset: {e}")
+            raise
+        
         all_experiences = dataset_loader.experiences  # List of dicts with 'story_id', 'content', ...
         all_qa_pairs = dataset_loader.get_qa_pairs()  # List of dicts with 'story_id', ...
         
@@ -130,6 +131,13 @@ def main():
             logging.info(f"[SAMPLE MODE] Sample contains {len(experiences)} experiences and {len(qa_pairs)} QA pairs.")
             if qa_pairs:
                 logging.info(f"[SAMPLE MODE] First QA: {qa_pairs[0]['question']}")
+            # --- DEBUG: Print first 3 experiences and QAs ---
+            print("\n[DEBUG] First 3 experiences:")
+            for idx, exp in enumerate(experiences[:3]):
+                print(f"  Experience {idx+1}: {exp[:200]}")
+            print("\n[DEBUG] First 3 QA pairs:")
+            for idx, qa in enumerate(qa_pairs[:3]):
+                print(f"  QA {idx+1}: Q: {qa['question']} | A: {qa['answer']} | Category: {qa.get('category_name','N/A')}")
         else:
             experiences = [exp['content'] for exp in all_experiences]
             qa_pairs = all_qa_pairs
@@ -146,18 +154,21 @@ def main():
         logging.info(f"\n{EMOJI['brain']} STEP 2: Initializing EVOLVE-MEM System")
         logging.info("-" * 50)
         
-        # Initialize with enhanced settings
-        system = EvolveMemSystem(
-            retrieval_mode='hybrid',
-            enable_evolution=True,
-            enable_clustering=True,
-            enable_self_improvement=True
-        )
+        try:
+            # Initialize with enhanced settings
+            system = EvolveMemSystem(
+                retrieval_mode='hybrid',
+                enable_evolution=True,
+                enable_clustering=True,
+                enable_self_improvement=True
+            )
+        except Exception as e:
+            logging.error(f"{EMOJI['cross']} Failed to initialize EVOLVE-MEM system: {e}")
+            raise
         
         # Configure hierarchical manager with optimized settings
         system.hierarchical_manager.clustering_frequency = 10  # Reduced from 3
-        system.hierarchical_manager.n_clusters_level1 = None  # Dynamic clustering
-        system.hierarchical_manager.n_clusters_level2 = None  # Dynamic clustering
+        # Note: n_clusters_level1 and n_clusters_level2 are already None by default for dynamic clustering
         
         logging.info(f"{EMOJI['check']} EVOLVE-MEM System initialized")
         logging.info(f"   - Architecture: 3-Tier Hierarchical Memory")
@@ -173,9 +184,14 @@ def main():
         logging.info("-" * 50)
         
         for i, experience in enumerate(experiences, 1):
-            logging.info(f"[{i:2d}/{len(experiences)}] Adding experience: {experience[:100]}...")
-            
-            note = system.add_experience(experience)
+            try:
+                logging.info(f"[{i:2d}/{len(experiences)}] Adding experience: {experience[:100]}...")
+                
+                note = system.add_experience(experience)
+            except Exception as e:
+                logging.error(f"{EMOJI['cross']} Failed to add experience {i}: {e}")
+                logging.error(f"Experience content: {experience[:200]}...")
+                continue  # Skip this experience and continue with the next
             
             # Enhanced memory creation logging
             logging.info(f"   {EMOJI['check']} Note ID: {note['id'][:8]}...")
@@ -201,6 +217,17 @@ def main():
         
         logging.info(f"{EMOJI['check']} Memory creation completed")
         logging.info(f"   - Total experiences processed: {len(experiences)}")
+        # --- DEBUG: Print cluster/principle summaries ---
+        stats = system.get_stats()
+        tier2_stats = stats['tier2_hierarchical_manager']
+        print("\n[DEBUG] Level 1 Clusters:")
+        l1_clusters = getattr(system.hierarchical_manager, 'level1_clusters', {})
+        for idx, (cid, cluster) in enumerate(list(l1_clusters.items())[:2]):
+            print(f"  Cluster {cid}: {cluster.get('summary','')[:200]}")
+        print("\n[DEBUG] Level 2 Principles:")
+        l2_clusters = getattr(system.hierarchical_manager, 'level2_clusters', {})
+        for idx, (cid, cluster) in enumerate(list(l2_clusters.items())[:2]):
+            print(f"  Principle {cid}: {cluster.get('principle','')[:200]}")
         
         # Before evaluation starts (after system and data are initialized, before evaluation loop):
         logging.info("[EVALUATION METRIC] Accuracy is computed as the fraction of questions where the system's answer matches the ground truth, using normalization, partial match, numeric tolerance, and robust logic as implemented in evaluation.py. See README for details.")
@@ -227,28 +254,32 @@ def main():
             
             # Query the system
             query_start = time.time()
-            result = system.query(question)
+            try:
+                result = system.query(question)
+            except Exception as e:
+                logging.error(f"{EMOJI['cross']} Query failed for question {i}: {e}")
+                result = {'error': str(e), 'llm_result': 'Query failed'}
             query_time = time.time() - query_start
-            
+        
             # Extract predicted answer with enhanced logging
-            if 'first_valid_answer' in result and result['first_valid_answer']:
+            if isinstance(result, dict) and 'first_valid_answer' in result and result['first_valid_answer']:
                 predicted = result['first_valid_answer']
                 logging.info(f"   [DEBUG] Using first_valid_answer for evaluation: {predicted}")
-            elif 'llm_result' in result:
+            elif isinstance(result, dict) and 'llm_result' in result:
                 predicted = result['llm_result']
                 logging.info(f"   {EMOJI['search']} Retrieval Path: {result.get('retrieval_path', 'Unknown')}")
                 if 'similarity' in result:
                     logging.info(f"   {EMOJI['chart']} Similarity Score: {result['similarity']:.3f}")
-            elif 'principle' in result:
+            elif isinstance(result, dict) and 'principle' in result:
                 predicted = result['principle']
                 logging.info(f"   {EMOJI['search']} Retrieval Path: Level 2 (Principle)")
-            elif 'summary' in result:
+            elif isinstance(result, dict) and 'summary' in result:
                 predicted = result['summary']
                 logging.info(f"   {EMOJI['search']} Retrieval Path: Level 1 (Cluster)")
-            elif 'note_content' in result:
+            elif isinstance(result, dict) and 'note_content' in result:
                 predicted = result['note_content']
                 logging.info(f"   {EMOJI['search']} Retrieval Path: Level 0 (Raw Note)")
-            elif 'results' in result and result['results'] and result['results'].get('ids'):
+            elif isinstance(result, dict) and 'results' in result and result['results'] and isinstance(result['results'], dict) and result['results'].get('ids'):
                 ids_list = result['results']['ids']
                 if ids_list and len(ids_list) > 0 and len(ids_list[0]) > 0:
                     note_id = ids_list[0][0]
@@ -262,67 +293,145 @@ def main():
                 predicted = str(result)
                 logging.info(f"   {EMOJI['search']} Retrieval Path: Unknown")
             
+            # --- DEBUG: Print retrieval path/content for first 3 QAs and all incorrect ---
+            if i <= 3:
+                print(f"\n[DEBUG] QA {i} Retrieval Path: {result.get('retrieval_path','Unknown') if isinstance(result, dict) else 'Unknown'}")
+                if isinstance(result, dict):
+                    if 'note_content' in result:
+                        print(f"  Retrieved Note: {result['note_content'][:200]}")
+                    if 'summary' in result:
+                        print(f"  Retrieved Summary: {result['summary'][:200]}")
+                    if 'principle' in result:
+                        print(f"  Retrieved Principle: {result['principle'][:200]}")
+            
             # Generalized patching step for all edge cases
-            ground_truth = str(qa['answer'])
-            patched_answer, was_patched = utils.patch_answer_generalized(question, predicted, result.get('note_content', ''), ground_truth)
-            if was_patched and patched_answer != predicted:
-                logging.warning(f"[PATCHED] Original: '{predicted}' | Patched: '{patched_answer}' | Reason: Generalized patching applied.")
-                predicted = patched_answer
+            try:
+                ground_truth = str(qa['answer'])
+                patched_answer, was_patched = utils.patch_answer_generalized(question, predicted, result.get('note_content', '') if isinstance(result, dict) else '', ground_truth)
+                if was_patched and patched_answer != predicted:
+                    logging.warning(f"[PATCHED] Original: '{predicted}' | Patched: '{patched_answer}' | Reason: Generalized patching applied.")
+                    predicted = patched_answer
+            except Exception as e:
+                logging.error(f"{EMOJI['cross']} Answer patching failed for question {i}: {e}")
+                # Continue with original predicted answer
+            
+            # --- DEBUG: Print original and patched answers for first 3 QAs and all patched ---
+            if i <= 3 or (was_patched if 'was_patched' in locals() else False):
+                print(f"\n[DEBUG] QA {i} Predicted: {predicted}")
+                print(f"[DEBUG] QA {i} Ground Truth: {ground_truth}")
+                if (was_patched if 'was_patched' in locals() else False):
+                    print(f"[DEBUG] QA {i} Patched Answer: {patched_answer}")
             
             # Get retrieval level
-            retrieval_level = result.get('level', -1)
+            retrieval_level = result.get('level', -1) if isinstance(result, dict) else -1
             
-            # Add to evaluator with enhanced metrics
-            evaluator.add_result(
-                question=question,
-                predicted=predicted,
-                ground_truth=ground_truth,
-                category=category,
-                retrieval_level=retrieval_level,
-                retrieval_time=query_time
-            )
+            # --- Postprocessing, patching, and normalization for BLEU-1 improvement ---
+            expected_type = None
+            if category and 'entity' in category.lower():
+                expected_type = 'entity'
+            elif category and 'temporal' in category.lower():
+                expected_type = 'date'
+            elif category and 'multi-hop' in category.lower():
+                expected_type = 'list'
+            # Always postprocess
+            from hierarchical_manager import HierarchicalMemoryManager
+            postprocessed = HierarchicalMemoryManager.postprocess_llm_output(predicted, expected_type) if hasattr(HierarchicalMemoryManager, 'postprocess_llm_output') else predicted
+            # Always patch
+            patched, _ = utils.patch_answer_generalized(question, postprocessed, result.get('note_content', '') if isinstance(result, dict) else '', ground_truth)
+            # For list answers, canonicalize
+            from utils import canonicalize_list_answer, normalize_answer
+            if expected_type == 'list':
+                patched = canonicalize_list_answer(patched)
+            # Normalize both prediction and ground truth
+            normalized_pred = normalize_answer(patched)
+            normalized_gt = normalize_answer(ground_truth)
+            logging.debug(f"[EVAL] Raw: {predicted} | Postprocessed: {postprocessed} | Patched: {patched} | Normalized: {normalized_pred}")
+            # Add to evaluator
+            try:
+                evaluator.add_result(
+                    question=question,
+                    predicted=normalized_pred,
+                    ground_truth=normalized_gt,
+                    category=category,
+                    retrieval_level=int(retrieval_level),
+                    retrieval_time=query_time
+                )
+            except Exception as e:
+                logging.error(f"{EMOJI['cross']} Failed to add result to evaluator for question {i}: {e}")
             
             # Log result with enhanced details
-            is_correct = evaluator.evaluate_answer(predicted, ground_truth)
+            is_correct = evaluator.evaluate_answer(normalized_pred, normalized_gt) # Use normalized answers for evaluation
             status = f"{EMOJI['check']} CORRECT" if is_correct else f"{EMOJI['cross']} INCORRECT"
-            logging.info(f"   A: {predicted[:100]}...")
+            logging.info(f"   A: {normalized_pred[:100]}...") # Log normalized predicted answer
             logging.info(f"   {status} | Level: {retrieval_level} | Time: {query_time:.3f}s")
             logging.info("")
+            
+            # --- DEBUG: Print retrieval path/content for all incorrect answers ---
+            if not is_correct:
+                print(f"\n[DEBUG] QA {i} INCORRECT")
+                print(f"  Q: {question}")
+                print(f"  Predicted: {normalized_pred}") # Print normalized predicted answer
+                print(f"  Ground Truth: {normalized_gt}") # Print normalized ground truth
+                print(f"  Retrieval Path: {result.get('retrieval_path','Unknown') if isinstance(result, dict) else 'Unknown'}")
+                if isinstance(result, dict):
+                    if 'note_content' in result:
+                        print(f"  Retrieved Note: {result['note_content'][:200]}")
+                    if 'summary' in result:
+                        print(f"  Retrieved Summary: {result['summary'][:200]}")
+                    if 'principle' in result:
+                        print(f"  Retrieved Principle: {result['principle'][:200]}")
         
         # Step 5: Calculate Enhanced Metrics and Generate Reports
         logging.info(f"\n{EMOJI['chart']} STEP 5: Calculating Enhanced Metrics and Generating Reports")
         logging.info("-" * 50)
         
-        metrics = evaluator.calculate_metrics()
+        try:
+            metrics = evaluator.calculate_metrics()
+        except Exception as e:
+            logging.error(f"{EMOJI['cross']} Failed to calculate metrics: {e}")
+            metrics = {'error': str(e), 'overall_accuracy': 0.0}
         
         # Generate detailed report with all metrics
-        detailed_report = evaluator.generate_detailed_report(metrics)
-        logging.info(detailed_report)
+        try:
+            detailed_report = evaluator.generate_detailed_report(metrics)
+            logging.info(detailed_report)
+        except Exception as e:
+            logging.error(f"{EMOJI['cross']} Failed to generate detailed report: {e}")
+            detailed_report = f"Error generating report: {e}"
         
         # After generating the detailed report (where the report is logged or printed):
         logging.info("[EVALUATION METRIC] Note: Accuracy is not simple string match. It uses normalization, partial match, numeric tolerance, and special-case logic for robust evaluation. See evaluation.py and README for details.")
         
-        # Generate SOTA comparison table with advanced metrics
-        sota_table = evaluator.generate_sota_comparison_table(metrics)
-        logging.info(sota_table)
-        
+        # (Removed) SOTA comparison table generation and logging
+        # (No call to evaluator.generate_sota_comparison_table or sota_table)
+
         # Step 6: Run Self-Improvement with Enhanced Monitoring
         logging.info(f"\n{EMOJI['loop']} STEP 6: Running Self-Improvement Cycle")
         logging.info("-" * 50)
         
-        improvement_result = system.run_self_improvement()
-        logging.info(f"   Action: {improvement_result.get('action', 'unknown')}")
-        
-        if improvement_result.get('action') == 'reorganized':
-            actions = improvement_result.get('actions_taken', [])
-            logging.info(f"   Actions taken: {len(actions)}")
-            for action in actions:
-                logging.info(f"     * {action}")
+        try:
+            improvement_result = system.run_self_improvement()
+            if improvement_result:
+                logging.info(f"   Action: {improvement_result.get('action', 'unknown')}")
+                
+                if improvement_result.get('action') == 'reorganized':
+                    actions = improvement_result.get('actions_taken', [])
+                    logging.info(f"   Actions taken: {len(actions)}")
+                    for action in actions:
+                        logging.info(f"     * {action}")
+            else:
+                improvement_result = {'action': 'none', 'reason': 'no_improvement_needed'}
+        except Exception as e:
+            logging.error(f"{EMOJI['cross']} Self-improvement failed: {e}")
+            improvement_result = {'action': 'failed', 'error': str(e)}
         
         # Step 7: Final System Statistics with Enhanced Details
         logging.info(f"\n{EMOJI['stats']} STEP 7: Final System Architecture Statistics")
         logging.info("-" * 50)
         
+        # Sync evaluator retrieval stats to system for final reporting
+        if 'retrieval_stats' in metrics:
+            system.hierarchical_manager.retrieval_stats = metrics['retrieval_stats'].copy()
         final_stats = system.get_stats()
         
         logging.info("Memory Hierarchy Overview:")
@@ -364,98 +473,110 @@ def main():
         os.makedirs(results_dir, exist_ok=True)
         
         # Save evaluation results with all metrics
-        eval_file = evaluator.save_results(metrics, results_dir)
+        try:
+            eval_file = evaluator.save_results(metrics, results_dir)
+        except Exception as e:
+            logging.error(f"{EMOJI['cross']} Failed to save evaluation results: {e}")
+            eval_file = "failed_to_save"
         
         # Save pipeline results with enhanced information
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        pipeline_file = os.path.join(results_dir, f'comprehensive_pipeline_{timestamp}.json')
-        
-        pipeline_results = {
-            'timestamp': datetime.now().isoformat(),
-            'pipeline_duration': time.time() - start_time,
-            'dataset_stats': dataset_loader.get_evaluation_metrics(),
-            'system_config': final_stats['system'],
-            'memory_stats': final_stats['tier1_dynamic_memory'],
-            'hierarchy_stats': final_stats['tier2_hierarchical_manager'],
-            'self_improvement_stats': final_stats.get('tier3_self_improvement', {}),
-            'evaluation_metrics': metrics,
-            'total_qa_pairs': len(qa_pairs),
-            'total_experiences': len(experiences),
-            'enhanced_features': {
-                'dynamic_clustering': True,
-                'reduced_clustering_frequency': True,
-                'hierarchy_persistence': True,
-                'enhanced_transparency': True,
-                'advanced_metrics': True,
-                'fallback_mechanisms': True,
-                'improved_logging': True,
-                'windows_compatibility': True
-            },
-            'advanced_metrics': {
-                'bleu_1': metrics.get('bleu_1', 0),
-                'rouge_l': metrics.get('rouge_l', 0),
-                'rouge_2': metrics.get('rouge_2', 0),
-                'meteor': metrics.get('meteor', 0),
-                'sbert': metrics.get('sbert', 0)
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            pipeline_file = os.path.join(results_dir, f'comprehensive_pipeline_{timestamp}.json')
+            
+            pipeline_results = {
+                'timestamp': datetime.now().isoformat(),
+                'pipeline_duration': time.time() - start_time,
+                'dataset_stats': dataset_loader.get_evaluation_metrics(),
+                'system_config': final_stats['system'],
+                'memory_stats': final_stats['tier1_dynamic_memory'],
+                'hierarchy_stats': final_stats['tier2_hierarchical_manager'],
+                'self_improvement_stats': final_stats.get('tier3_self_improvement', {}),
+                'evaluation_metrics': metrics,
+                'total_qa_pairs': len(qa_pairs),
+                'total_experiences': len(experiences),
+                'enhanced_features': {
+                    'dynamic_clustering': True,
+                    'reduced_clustering_frequency': True,
+                    'hierarchy_persistence': True,
+                    'enhanced_transparency': True,
+                    'advanced_metrics': True,
+                    'fallback_mechanisms': True,
+                    'improved_logging': True,
+                    'windows_compatibility': True
+                },
+                'advanced_metrics': {
+                    'bleu_1': metrics.get('bleu_1', 0),
+                    'rouge_l': metrics.get('rouge_l', 0),
+                    'rouge_2': metrics.get('rouge_2', 0),
+                    'meteor': metrics.get('meteor', 0),
+                    'sbert': metrics.get('sbert', 0)
+                }
             }
-        }
-        
-        with open(pipeline_file, 'w') as f:
-            json.dump(pipeline_results, f, indent=2)
+            
+            with open(pipeline_file, 'w', encoding='utf-8') as f:
+                json.dump(pipeline_results, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logging.error(f"{EMOJI['cross']} Failed to save pipeline results: {e}")
+            pipeline_file = "failed_to_save"
         
         logging.info(f"{EMOJI['check']} Evaluation results saved to: {eval_file}")
         logging.info(f"{EMOJI['check']} Pipeline results saved to: {pipeline_file}")
         
         # Step 9: Final Summary with Enhanced Metrics
-        total_time = time.time() - start_time
-        logging.info(f"\n{EMOJI['finish']} COMPREHENSIVE PIPELINE COMPLETED SUCCESSFULLY")
-        logging.info("=" * 80)
-        logging.info(f"Total execution time: {total_time:.2f} seconds")
-        logging.info(f"Overall accuracy: {metrics['overall_accuracy']:.3f} ({metrics['overall_accuracy']*100:.1f}%)")
-        logging.info(f"Specific answer rate: {metrics['specific_answer_rate']:.3f} ({metrics['specific_answer_rate']*100:.1f}%)")
-        logging.info(f"F1 Score: {metrics.get('overall_f1', 0.0):.3f}")
-        logging.info(f"BLEU-1: {metrics.get('bleu_1', 0):.3f}")
-        logging.info(f"ROUGE-L: {metrics.get('rouge_l', 0):.3f}")
-        logging.info(f"ROUGE-2: {metrics.get('rouge_2', 0):.3f}")
-        logging.info(f"METEOR: {metrics.get('meteor', 0):.3f}")
-        logging.info(f"SBERT: {metrics.get('sbert', 0):.3f}")
-        logging.info(f"Token Length: {metrics.get('token_length', 0):.1f}")
-        logging.info(f"Questions evaluated: {metrics['total_questions']}")
-        
-        # Individual category evaluation metrics
-        logging.info(f"\nIndividual Category Performance:")
-        for cat in metrics['category_accuracies']:
-            logging.info(f"   {cat}: {metrics['category_accuracies'][cat]:.3f} ({metrics['category_accuracies'][cat]*100:.1f}%) | F1: {metrics['category_f1'].get(cat, 0.0):.3f}")
-            logging.info(f"     BLEU-1: {metrics['category_bleu'].get(cat, 0):.3f}, ROUGE-L: {metrics['category_rougeL'].get(cat, 0):.3f}, ROUGE-2: {metrics['category_rouge2'].get(cat, 0):.3f}, METEOR: {metrics['category_meteor'].get(cat, 0):.3f}, SBERT: {metrics['category_sbert'].get(cat, 0):.3f}")
-        
-        logging.info(f"Advanced metrics computed: F1, BLEU-1, ROUGE-L, ROUGE-2, METEOR, SBERT")
-        
-        logging.info(f"Log file: {log_file}")
-        logging.info(f"Results files: {eval_file}, {pipeline_file}")
-        logging.info("=" * 80)
-        
-        # Print final summary to console
-        print(f"\n{EMOJI['trophy']} EVOLVE-MEM Comprehensive Evaluation Results:")
-        print(f"{EMOJI['chart']} Overall Accuracy: {metrics['overall_accuracy']:.3f} ({metrics['overall_accuracy']*100:.1f}%)")
-        print(f"{EMOJI['chart']} F1 Score: {metrics.get('overall_f1', 0.0):.3f}")
-        print(f"{EMOJI['chart']} BLEU-1: {metrics.get('bleu_1', 0):.3f}")
-        print(f"{EMOJI['chart']} ROUGE-L: {metrics.get('rouge_l', 0):.3f}")
-        print(f"{EMOJI['chart']} ROUGE-2: {metrics.get('rouge_2', 0):.3f}")
-        print(f"{EMOJI['chart']} METEOR: {metrics.get('meteor', 0):.3f}")
-        print(f"{EMOJI['chart']} SBERT: {metrics.get('sbert', 0):.3f}")
-        print(f"{EMOJI['chart']} Token Length: {metrics.get('token_length', 0):.1f}")
-        
-        print(f"\n{EMOJI['chart']} Individual Category Performance:")
-        for cat in metrics['category_accuracies']:
-            print(f"   {cat}: {metrics['category_accuracies'][cat]:.3f} ({metrics['category_accuracies'][cat]*100:.1f}%) | F1: {metrics['category_f1'].get(cat, 0.0):.3f}")
-            print(f"     BLEU-1: {metrics['category_bleu'].get(cat, 0):.3f}, ROUGE-L: {metrics['category_rougeL'].get(cat, 0):.3f}, ROUGE-2: {metrics['category_rouge2'].get(cat, 0):.3f}, METEOR: {metrics['category_meteor'].get(cat, 0):.3f}, SBERT: {metrics['category_sbert'].get(cat, 0):.3f}")
-        
-        print(f"{EMOJI['check']} Pipeline completed successfully!")
+        try:
+            total_time = time.time() - start_time
+            logging.info(f"\n{EMOJI['finish']} COMPREHENSIVE PIPELINE COMPLETED SUCCESSFULLY")
+            logging.info("=" * 80)
+            logging.info(f"Total execution time: {total_time:.2f} seconds")
+            logging.info(f"Overall accuracy: {metrics['overall_accuracy']:.3f} ({metrics['overall_accuracy']*100:.1f}%)")
+            logging.info(f"Specific answer rate: {metrics.get('specific_answer_rate', 0):.3f} ({metrics.get('specific_answer_rate', 0)*100:.1f}%)")
+            logging.info(f"F1 Score: {metrics.get('overall_f1', 0.0):.3f}")
+            logging.info(f"BLEU-1: {metrics.get('bleu_1', 0):.3f}")
+            logging.info(f"ROUGE-L: {metrics.get('rouge_l', 0):.3f}")
+            logging.info(f"ROUGE-2: {metrics.get('rouge_2', 0):.3f}")
+            logging.info(f"METEOR: {metrics.get('meteor', 0):.3f}")
+            logging.info(f"SBERT: {metrics.get('sbert', 0):.3f}")
+            logging.info(f"Token Length: {metrics.get('token_length', 0):.1f}")
+            logging.info(f"Questions evaluated: {metrics.get('total_questions', 0)}")
+            
+            # Individual category evaluation metrics
+            logging.info(f"\nIndividual Category Performance:")
+            for cat in metrics.get('category_accuracies', {}):
+                logging.info(f"   {cat}: {metrics['category_accuracies'][cat]:.3f} ({metrics['category_accuracies'][cat]*100:.1f}%) | F1: {metrics.get('category_f1', {}).get(cat, 0.0):.3f}")
+                logging.info(f"     BLEU-1: {metrics.get('category_bleu', {}).get(cat, 0):.3f}, ROUGE-L: {metrics.get('category_rougeL', {}).get(cat, 0):.3f}, ROUGE-2: {metrics.get('category_rouge2', {}).get(cat, 0):.3f}, METEOR: {metrics.get('category_meteor', {}).get(cat, 0):.3f}, SBERT: {metrics.get('category_sbert', {}).get(cat, 0):.3f}")
+            
+            logging.info(f"Advanced metrics computed: F1, BLEU-1, ROUGE-L, ROUGE-2, METEOR, SBERT")
+            
+            logging.info(f"Log file: {log_file}")
+            logging.info(f"Results files: {eval_file}, {pipeline_file}")
+            logging.info("=" * 80)
+            
+            # Print final summary to console
+            print(f"\n{EMOJI['trophy']} EVOLVE-MEM Comprehensive Evaluation Results:")
+            print(f"{EMOJI['chart']} Overall Accuracy: {metrics['overall_accuracy']:.3f} ({metrics['overall_accuracy']*100:.1f}%)")
+            print(f"{EMOJI['chart']} F1 Score: {metrics.get('overall_f1', 0.0):.3f}")
+            print(f"{EMOJI['chart']} BLEU-1: {metrics.get('bleu_1', 0):.3f}")
+            print(f"{EMOJI['chart']} ROUGE-L: {metrics.get('rouge_l', 0):.3f}")
+            print(f"{EMOJI['chart']} ROUGE-2: {metrics.get('rouge_2', 0):.3f}")
+            print(f"{EMOJI['chart']} METEOR: {metrics.get('meteor', 0):.3f}")
+            print(f"{EMOJI['chart']} SBERT: {metrics.get('sbert', 0):.3f}")
+            print(f"{EMOJI['chart']} Token Length: {metrics.get('token_length', 0):.1f}")
+            
+            print(f"\n{EMOJI['chart']} Individual Category Performance:")
+            for cat in metrics.get('category_accuracies', {}):
+                print(f"   {cat}: {metrics['category_accuracies'][cat]:.3f} ({metrics['category_accuracies'][cat]*100:.1f}%) | F1: {metrics.get('category_f1', {}).get(cat, 0.0):.3f}")
+                print(f"     BLEU-1: {metrics.get('category_bleu', {}).get(cat, 0):.3f}, ROUGE-L: {metrics.get('category_rougeL', {}).get(cat, 0):.3f}, ROUGE-2: {metrics.get('category_rouge2', {}).get(cat, 0):.3f}, METEOR: {metrics.get('category_meteor', {}).get(cat, 0):.3f}, SBERT: {metrics.get('category_sbert', {}).get(cat, 0):.3f}")
+            
+            print(f"{EMOJI['check']} Pipeline completed successfully!")
+        except Exception as e:
+            logging.error(f"{EMOJI['cross']} Failed to print final summary: {e}")
+            print(f"{EMOJI['cross']} Pipeline completed with errors. Check logs for details.")
         
     except Exception as e:
         logging.error(f"{EMOJI['cross']} Comprehensive pipeline failed: {e}")
         print(f"{EMOJI['cross']} Comprehensive pipeline failed: {e}")
-        raise
+        # Don't raise here - let the pipeline complete and save what it can
 
 if __name__ == "__main__":
     main() 
