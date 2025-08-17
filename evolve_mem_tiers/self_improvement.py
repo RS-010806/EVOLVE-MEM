@@ -8,7 +8,7 @@ Enhanced version with better integration and accuracy tracking.
 import time
 import random
 from typing import Dict, List, Any, Optional
-from hierarchical_manager import HierarchicalMemoryManager
+from evolve_mem_tiers.hierarchical_manager import HierarchicalMemoryManager
 
 class SelfImprovementEngine:
     """

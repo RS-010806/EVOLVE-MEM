@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evolve-mem"
+version = "0.1.0"
+description = "EVOLVE-MEM: Self-Evolving Hierarchical Memory for Agentic AI"
+readme = "README.md"
+requires-python = ">=3.9,<3.12"
+authors = [{ name = "AIMS Research", email = "" }]
+license = { text = "Proprietary" }
+
+# Dependencies are managed via requirements.txt during research; install them with
+#   pip install -r requirements.txt
+# You can optionally mirror them here later if you want packaging to handle deps.
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+  "core*",
+  "evolve_mem_tiers*",
+  "scripts*",
+  "test_suite*",
+]
+exclude = [
+  "venv*",
+  "data*",
+  "results*",
+  "logs*",
+]
+
+[project.scripts]
+evolve-mem-pipeline = "scripts.run_comprehensive_pipeline:main"
+evolve-mem-ablation = "scripts.run_ablation:main"
+evolve-mem-test = "test_suite.test_system_performance:test_system_performance"
+
+

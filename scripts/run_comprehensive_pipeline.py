@@ -1,5 +1,5 @@
 """
-EVOLVE-MEM: Comprehensive Research Pipeline - ENHANCED VERSION
+EVOLVE-MEM: Comprehensive Research Pipeline 
 
 A comprehensive evaluation pipeline for the EVOLVE-MEM system:
 - Loads LoCoMo dataset with 10 stories and QA pairs
@@ -22,14 +22,19 @@ import json
 import logging
 from datetime import datetime
 from typing import List, Dict, Any
-import utils  
 
-# Add current directory to path for imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Ensure repository root is on sys.path so that `core/` and `evolve_mem_tiers/` are importable
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if REPO_ROOT not in sys.path:
+	sys.path.insert(0, REPO_ROOT)
 
-from dataset_loader import LoCoMoDatasetLoader
-from memory_system import EvolveMemSystem
-from evaluation import EVOLVEMEMEvaluator
+from core import utils
+
+# (path already ensured above)
+
+from core.dataset_loader import LoCoMoDatasetLoader
+from core.memory_system import EvolveMemSystem
+from core.evaluation import EVOLVEMEMEvaluator
 
 # ASCII-safe emoji replacements for Windows compatibility
 EMOJI = {
@@ -334,12 +339,12 @@ def main():
             elif category and 'multi-hop' in category.lower():
                 expected_type = 'list'
             # Always postprocess
-            from hierarchical_manager import HierarchicalMemoryManager
+            from evolve_mem_tiers.hierarchical_manager import HierarchicalMemoryManager
             postprocessed = HierarchicalMemoryManager.postprocess_llm_output(predicted, expected_type) if hasattr(HierarchicalMemoryManager, 'postprocess_llm_output') else predicted
             # Always patch
             patched, _ = utils.patch_answer_generalized(question, postprocessed, result.get('note_content', '') if isinstance(result, dict) else '', ground_truth)
             # For list answers, canonicalize
-            from utils import canonicalize_list_answer, normalize_answer
+            from core.utils import canonicalize_list_answer, normalize_answer
             if expected_type == 'list':
                 patched = canonicalize_list_answer(patched)
             # Normalize both prediction and ground truth

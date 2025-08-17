@@ -10,13 +10,13 @@ Organizes memories into a three-level hierarchy:
 """
 import numpy as np
 from sklearn.cluster import KMeans
-from dynamic_memory import DynamicMemoryNetwork
-from llm_backend import get_llm_backend, BaseLLM
+from evolve_mem_tiers.dynamic_memory import DynamicMemoryNetwork
+from core.llm_backend import get_llm_backend, BaseLLM
 from typing import Dict, List, Optional, Any
 import time
 import json
 import os
-import utils
+from core import utils
 import logging
 import re # Added for regex in patch_answer_with_context
 

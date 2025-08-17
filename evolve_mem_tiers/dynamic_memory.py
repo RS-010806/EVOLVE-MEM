@@ -32,7 +32,15 @@ class DynamicMemoryNetwork:
         
         try:
             self.chroma_client = chromadb.Client(Settings(anonymized_telemetry=False))
-            self.collection = self.chroma_client.create_collection('evolve_mem_dynamic')
+            # Use get_or_create to avoid UniqueConstraintError when rerunning
+            if hasattr(self.chroma_client, 'get_or_create_collection'):
+                self.collection = self.chroma_client.get_or_create_collection('evolve_mem_dynamic')
+            else:
+                # Fallback for older clients: try create, else get
+                try:
+                    self.collection = self.chroma_client.create_collection('evolve_mem_dynamic')
+                except Exception:
+                    self.collection = self.chroma_client.get_collection('evolve_mem_dynamic')
             logging.info("ChromaDB collection created successfully")
         except Exception as e:
             logging.error(f"Failed to initialize ChromaDB: {e}", exc_info=True)

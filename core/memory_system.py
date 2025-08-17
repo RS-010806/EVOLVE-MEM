@@ -8,10 +8,10 @@ Implements the three-tier architecture:
 
 Simplified version focused on core functionality.
 """
-from dynamic_memory import DynamicMemoryNetwork
-from hierarchical_manager import HierarchicalMemoryManager
-from self_improvement import SelfImprovementEngine
-from llm_backend import get_llm_backend, BaseLLM
+from evolve_mem_tiers.dynamic_memory import DynamicMemoryNetwork
+from evolve_mem_tiers.hierarchical_manager import HierarchicalMemoryManager
+from evolve_mem_tiers.self_improvement import SelfImprovementEngine
+from core.llm_backend import get_llm_backend, BaseLLM
 from typing import Dict, List, Optional, Any
 import logging
 

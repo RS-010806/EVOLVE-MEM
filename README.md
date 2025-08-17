@@ -158,23 +158,49 @@ python run_comprehensive_pipeline.py
 ### Project Structure
 ```
 EVOLVE-MEM/
-├── memory_system.py            # Main system interface
-├── hierarchical_manager.py     # Tier 2: Hierarchical memory management
-├── dynamic_memory.py           # Tier 1: Dynamic memory network
-├── self_improvement.py         # Tier 3: Self-improvement engine
-├── evaluation.py               # Comprehensive evaluation framework
-├── dataset_loader.py           # LoCoMo dataset loader
-├── run_comprehensive_pipeline.py  # Full research pipeline
-├── test_system_performance.py     # Performance test suite
-├── config.py                   # Configuration management
-├── llm_backend.py              # LLM integration (Gemini)
-├── utils.py                    # Utility functions
-├── requirements.txt            # Dependencies
-├── README.md                   # This file
-├── data/                       # Datasets
-├── results/                    # Evaluation outputs
-├── logs/                       # Log files
+├── core/                           # Import from here for main APIs and utilities
+│   ├── __init__.py                 # Marks package
+│   ├── config.py                   # Central config (env toggles, thresholds, paths)
+│   ├── dataset_loader.py           # LoCoMo dataset loader and stats helpers
+│   ├── evaluation.py               # EVOLVEMEMEvaluator and metric computations
+│   ├── llm_backend.py              # Gemini LLM backend (prompt → text)
+│   ├── memory_system.py            # EvolveMemSystem orchestrator (wires tiers)
+│   └── utils.py                    # Text processing, canonicalization, patching, metrics
+├── evolve_mem_tiers/               # Three-tier memory implementation
+│   ├── __init__.py                 # Marks package
+│   ├── dynamic_memory.py           # Tier 1: embeddings (GTE-small) + ChromaDB search + in-memory dictionary
+│   ├── hierarchical_manager.py     # Tier 2: clustering, L1 summaries, L2 principles, retrieval
+│   └── self_improvement.py         # Tier 3: performance monitor and reorganization
+├── scripts/                        # Entry points (run as modules or via CLI)
+│   ├── __init__.py                 # Marks package
+│   ├── run_comprehensive_pipeline.py  # Full pipeline: build → eval → report → stats
+│   ├── run_ablation.py                # Ablation runner across variants (saves JSON + log)
+│   └── ABLATION_README.md             # Ablation documentation for paper appendix
+├── test_suite/
+│   ├── __init__.py                 # Marks package
+│   └── test_system_performance.py  # Deterministic performance test over synthetic stories
+├── data/                           # Datasets (e.g., LoCoMo JSON)
+├── results/                        # Saved metrics, summaries, and reports
+├── logs/                           # Verbose logs from runs (pipeline/ablation)
+├── memory_hierarchy.json           # Optional persisted hierarchy snapshot
+├── pyproject.toml                  # Project metadata and console scripts
+├── requirements.txt                # Python dependencies for research runs
+└── README.md
 ```
+
+Recommended imports:
+- from core.memory_system import EvolveMemSystem
+- from evolve_mem_tiers.hierarchical_memory import HierarchicalMemoryManager
+- from core.evaluation import EVOLVEMEMEvaluator
+- from core.utils import normalize_answer, canonicalize_list_answer
+
+How to run (module mode recommended):
+- Full pipeline: `python -m scripts.run_comprehensive_pipeline`
+- Ablation: `python -m scripts.run_ablation`
+- Test suite: `python -m test_suite.test_system_performance`
+
+If you installed the repo with `pip install -e .`, you can also use console commands:
+- `evolve-mem-pipeline`, `evolve-mem-ablation`, `evolve-mem-test`
 
 ---
 

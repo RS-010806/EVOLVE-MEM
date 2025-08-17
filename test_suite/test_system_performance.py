@@ -15,12 +15,12 @@ import time
 import logging
 import sys
 import os
-from memory_system import EvolveMemSystem
-from evaluation import EVOLVEMEMEvaluator
+from core.memory_system import EvolveMemSystem
+from core.evaluation import EVOLVEMEMEvaluator
 import re
 from datetime import datetime
-from hierarchical_manager import HierarchicalMemoryManager
-import utils
+from evolve_mem_tiers.hierarchical_manager import HierarchicalMemoryManager
+from core import utils
 
 # Configure logging to handle Unicode issues on Windows
 if sys.platform == "win32":
