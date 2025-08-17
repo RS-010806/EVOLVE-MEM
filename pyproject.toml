@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "EVOLVE-MEM: Self-Evolving Hierarchical Memory for Agentic AI"
 readme = "README.md"
 requires-python = ">=3.9,<3.12"
-authors = [{ name = "AIMS Research", email = "" }]
+authors = [{ name = "Rishi Shah", email = "rishishah010806@gmail.com" }]
 license = { text = "Proprietary" }
 
 # Dependencies are managed via requirements.txt during research; install them with
